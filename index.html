@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biểu Đồ Kết Quả</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 3px dashed #667eea;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .file-name {
+            margin-top: 15px;
+            color: #666;
+            font-size: 1em;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chart-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error {
+            text-align: center;
+            padding: 20px;
+            background: #fee;
+            color: #c33;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .info {
+            text-align: center;
+            padding: 20px;
+            background: #e8f4f8;
+            color: #333;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Biểu Đồ Kết Quả</h1>
+        
+        <div class="upload-section">
+            <div class="info">
+                <p>Vui lòng chọn file Excel (.xlsx) để hiển thị biểu đồ cho từng cột</p>
+            </div>
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="file-input-label">
+                    📁 Chọn File Excel
+                </label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" />
+            </div>
+            <div class="file-name" id="fileName"></div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Đang xử lý dữ liệu...
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="chartsContainer" class="charts-container"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const chartsContainer = document.getElementById('chartsContainer');
+        const charts = [];
+
+        // Function để xử lý dữ liệu từ ArrayBuffer
+        function processExcelData(arrayBuffer, fileDisplayName = 'data.xlsx') {
+            try {
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Lấy sheet đầu tiên
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Chuyển đổi sang JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (jsonData.length === 0) {
+                    showError('File Excel không có dữ liệu!');
+                    return;
+                }
+
+                // Lấy header (dòng đầu tiên)
+                const headers = jsonData[0];
+                if (!headers || headers.length === 0) {
+                    showError('File Excel không có cột tiêu đề!');
+                    return;
+                }
+
+                // Xóa biểu đồ cũ
+                chartsContainer.innerHTML = '';
+                charts.forEach(chart => chart.destroy());
+                charts.length = 0;
+
+                // Xử lý từng cột
+                headers.forEach((header, colIndex) => {
+                    if (!header || header === '') return;
+                    
+                    // Lấy dữ liệu của cột (bỏ qua dòng đầu tiên là header)
+                    const columnData = jsonData.slice(1).map(row => row[colIndex]).filter(val => val !== undefined && val !== null && val !== '');
+                    
+                    if (columnData.length === 0) return;
+
+                    // Kiểm tra xem dữ liệu là số hay text
+                    const isNumeric = columnData.every(val => !isNaN(parseFloat(val)) && isFinite(val));
+                    
+                    if (isNumeric) {
+                        createNumericChart(header, columnData);
+                    } else {
+                        createCategoryChart(header, columnData);
+                    }
+                });
+
+                loading.style.display = 'none';
+                fileName.textContent = `File đã tải: ${fileDisplayName}`;
+                
+            } catch (err) {
+                showError('Lỗi khi đọc file: ' + err.message);
+            }
+        }
+
+        // Function để load file từ URL
+        async function loadExcelFromUrl(url, displayName) {
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                processExcelData(arrayBuffer, displayName);
+            } catch (err) {
+                loading.style.display = 'none';
+                // Không hiển thị lỗi khi load file mặc định thất bại (để người dùng có thể chọn file thủ công)
+                if (url !== 'data.xlsx') {
+                    showError('Lỗi khi tải file: ' + err.message);
+                }
+                // File mặc định không tìm thấy là bình thường, không cần hiển thị lỗi
+            }
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            error.style.display = 'none';
+            loading.style.display = 'block';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                processExcelData(e.target.result, file.name);
+            };
+
+            reader.onerror = function() {
+                showError('Lỗi khi đọc file!');
+                loading.style.display = 'none';
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            loading.style.display = 'none';
+        }
+
+        function createNumericChart(columnName, data) {
+            const numericData = data.map(val => parseFloat(val));
+            const labels = Array.from({ length: numericData.length }, (_, i) => `Mẫu ${i + 1}`);
+            
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.innerHTML = `
+                <div class="chart-title">${columnName}</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart-${charts.length}"></canvas>
+                </div>
+            `;
+            
+            chartsContainer.appendChild(chartCard);
+            
+            const ctx = document.getElementById(`chart-${charts.length}`).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: columnName,
+                        data: numericData,
+                        borderColor: getRandomColor(),
+                        backgroundColor: getRandomColor(0.1),
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+            
+            charts.push(chart);
+        }
+
+        function createCategoryChart(columnName, data) {
+            // Đếm số lần xuất hiện của mỗi giá trị
+            const counts = {};
+            data.forEach(val => {
+                const key = String(val);
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            
+            const labels = Object.keys(counts);
+            const values = Object.values(counts);
+            
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.innerHTML = `
+                <div class="chart-title">${columnName}</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart-${charts.length}"></canvas>
+                </div>
+            `;
+            
+            chartsContainer.appendChild(chartCard);
+            
+            const ctx = document.getElementById(`chart-${charts.length}`).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Số lượng',
+                        data: values,
+                        backgroundColor: labels.map(() => getRandomColor(0.7)),
+                        borderColor: labels.map(() => getRandomColor()),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+            
+            charts.push(chart);
+        }
+
+        function getRandomColor(alpha = 1) {
+            const colors = [
+                `rgba(102, 126, 234, ${alpha})`,
+                `rgba(118, 75, 162, ${alpha})`,
+                `rgba(237, 100, 166, ${alpha})`,
+                `rgba(255, 154, 158, ${alpha})`,
+                `rgba(250, 208, 196, ${alpha})`,
+                `rgba(113, 206, 255, ${alpha})`,
+                `rgba(68, 184, 172, ${alpha})`,
+                `rgba(255, 193, 7, ${alpha})`,
+                `rgba(233, 30, 99, ${alpha})`,
+                `rgba(156, 39, 176, ${alpha})`
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Tự động load file data.xlsx khi trang web được mở
+        window.addEventListener('DOMContentLoaded', function() {
+            // Tự động tải file data.xlsx từ cùng thư mục
+            loadExcelFromUrl('data.xlsx', 'data.xlsx');
+        });
+    </script>
+</body>
+</html>
