@@ -160,29 +160,69 @@
                 type: 'bar'
             },
             {
-                // 3. Màu sắc sản phẩm: biểu đồ tròn
+                // 3. Màu sắc sản phẩm: biểu đồ tròn (nhóm theo số 1,2,3,4,5)
                 match: ['màu sắc'],
-                type: 'pie'
+                type: 'pie',
+                groupByNumber: true,
+                labelMap: {
+                    '1': 'Nhóm 1',
+                    '2': 'Nhóm 2',
+                    '3': 'Nhóm 3',
+                    '4': 'Nhóm 4',
+                    '5': 'Nhóm 5'
+                }
             },
             {
-                // 4. Mùi hương sản phẩm: biểu đồ tròn
+                // 4. Mùi hương sản phẩm: biểu đồ tròn (nhóm theo số 1,2,3,4,5)
                 match: ['mùi hương'],
-                type: 'pie'
+                type: 'pie',
+                groupByNumber: true,
+                labelMap: {
+                    '1': 'Nhóm 1',
+                    '2': 'Nhóm 2',
+                    '3': 'Nhóm 3',
+                    '4': 'Nhóm 4',
+                    '5': 'Nhóm 5'
+                }
             },
             {
-                // 5. Cảm giác trên da tay khi sử dụng: biểu đồ tròn
+                // 5. Cảm giác trên da tay khi sử dụng: biểu đồ tròn (nhóm theo số 1,2,3,4,5)
                 match: ['cảm giác trên da sử dụng', 'cảm giác trên da', 'cảm giác trên da tay khi sử dụng'],
-                type: 'pie'
+                type: 'pie',
+                groupByNumber: true,
+                labelMap: {
+                    '1': 'Nhóm 1',
+                    '2': 'Nhóm 2',
+                    '3': 'Nhóm 3',
+                    '4': 'Nhóm 4',
+                    '5': 'Nhóm 5'
+                }
             },
             {
-                // 6. Cảm giác sạch sau khi sử dụng: biểu đồ tròn
+                // 6. Cảm giác sạch sau khi sử dụng: biểu đồ tròn (nhóm theo số 1,2,3,4,5)
                 match: ['cảm giác sau khi sử dụng', 'sau khi sử dụng', 'cảm giác sạch sau khi sử dụng'],
-                type: 'pie'
+                type: 'pie',
+                groupByNumber: true,
+                labelMap: {
+                    '1': 'Nhóm 1',
+                    '2': 'Nhóm 2',
+                    '3': 'Nhóm 3',
+                    '4': 'Nhóm 4',
+                    '5': 'Nhóm 5'
+                }
             },
             {
-                // 7. Mức độ tiện lợi khi sử dụng: biểu đồ tròn
+                // 7. Mức độ tiện lợi khi sử dụng: biểu đồ tròn (nhóm theo số 1,2,3,4,5)
                 match: ['mức độ tiện lợi'],
-                type: 'pie'
+                type: 'pie',
+                groupByNumber: true,
+                labelMap: {
+                    '1': 'Nhóm 1',
+                    '2': 'Nhóm 2',
+                    '3': 'Nhóm 3',
+                    '4': 'Nhóm 4',
+                    '5': 'Nhóm 5'
+                }
             },
             {
                 // 8. Anh/chị có sẵn sàng sử dụng sản phẩm rửa tay sát khuẩn từ thảo dược không?: biểu đồ cột
@@ -568,14 +608,26 @@
 
         function createSpecialOrCategoryChart(columnName, data, config) {
             const counts = {};
-            // Xử lý dữ liệu: chuyển tất cả thành string và giữ nguyên giá trị gốc
+            
+            // Xử lý dữ liệu: nhóm theo số nếu có flag groupByNumber
             data.forEach(val => {
-                // Chuyển thành string để giữ nguyên giá trị, không parse số
-                const strVal = String(val).trim();
-                if (strVal === '' || strVal === 'undefined' || strVal === 'null') return;
+                let key;
                 
-                // Áp dụng labelMap nếu có (chỉ cho các trường hợp đặc biệt như đối tượng khảo sát)
-                const mapped = mapLabel(strVal, config?.labelMap);
+                if (config?.groupByNumber) {
+                    // Nếu có groupByNumber, chuyển giá trị thành số rồi nhóm lại
+                    // Ví dụ: 1, 2, 3, 4, 5 sẽ được nhóm thành "1", "2", "3", "4", "5"
+                    const numVal = parseFloat(val);
+                    if (isNaN(numVal) || !isFinite(numVal)) return;
+                    key = String(numVal); // Giữ nguyên số để nhóm
+                } else {
+                    // Xử lý như text: chuyển thành string và giữ nguyên giá trị gốc
+                    const strVal = String(val).trim();
+                    if (strVal === '' || strVal === 'undefined' || strVal === 'null') return;
+                    key = strVal;
+                }
+                
+                // Áp dụng labelMap nếu có để đổi tên nhóm (ví dụ: "1" -> "Nhóm 1")
+                const mapped = mapLabel(key, config?.labelMap);
                 counts[mapped] = (counts[mapped] || 0) + 1;
             });
 
