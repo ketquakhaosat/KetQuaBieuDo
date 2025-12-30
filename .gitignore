@@ -3,6 +3,10 @@
 .AppleDouble
 .LSOverride
 
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
 # IDE
 .vscode/
 .idea/
@@ -18,4 +22,3 @@ npm-debug.log*
 *.tmp
 *.temp
 
-~.xlsx
