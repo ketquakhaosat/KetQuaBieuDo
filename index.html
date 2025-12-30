@@ -17,23 +17,23 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 16px;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 40px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+            padding: 24px;
         }
 
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            margin-bottom: 20px;
+            font-size: clamp(1.6rem, 3vw, 2.3rem);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -42,54 +42,68 @@
 
         .charts-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 24px;
         }
 
         .chart-card {
             background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e0e0e0;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e5e5e5;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .chart-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
         }
 
         .chart-title {
-            font-size: 1.3em;
-            font-weight: bold;
+            font-size: 1.1rem;
+            font-weight: 700;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             text-align: center;
-            padding-bottom: 15px;
+            padding-bottom: 10px;
             border-bottom: 2px solid #667eea;
+            line-height: 1.4;
         }
 
         .chart-wrapper {
             position: relative;
-            height: 400px;
+            height: 320px;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 32px;
             color: #666;
-            font-size: 1.2em;
+            font-size: 1rem;
         }
 
         .error {
             text-align: center;
-            padding: 20px;
+            padding: 16px;
             background: #fee;
             color: #c33;
             border-radius: 10px;
-            margin: 20px 0;
+            margin: 16px 0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 16px;
+            }
+            .chart-wrapper {
+                height: 260px;
+            }
         }
     </style>
 </head>
@@ -111,6 +125,91 @@
         const error = document.getElementById('error');
         const chartsContainer = document.getElementById('chartsContainer');
         const charts = [];
+
+        const colorPalette = [
+            '#667eea', '#764ba2', '#ed6490', '#ff9a9e', '#f8c102',
+            '#4bc0c0', '#36a2eb', '#ff6384', '#8bc34a', '#ffb74d',
+            '#26c6da', '#ab47bc', '#5c6bc0', '#9ccc65', '#ffa726'
+        ];
+
+        // Các cấu hình đặc biệt cho từng câu hỏi
+        const specialConfigs = [
+            {
+                match: ['thời gian'],
+                skip: true
+            },
+            {
+                match: ['đối tượng khảo sát'],
+                type: 'pie',
+                labelMap: {
+                    'học sinh': 'Học sinh',
+                    'hs': 'Học sinh',
+                    'phụ huynh': 'Phụ huynh',
+                    'giáo viên': 'Giáo viên',
+                    'gv': 'Giáo viên',
+                    'sinh viên': 'Sinh viên',
+                    'sv': 'Sinh viên',
+                    'người đi làm': 'Người đi làm',
+                    'đi làm': 'Người đi làm'
+                }
+            },
+            {
+                match: ['độ tuổi'],
+                type: 'pie'
+            },
+            {
+                match: ['màu sắc'],
+                type: 'pie'
+            },
+            {
+                match: ['mùi hương'],
+                type: 'pie'
+            },
+            {
+                match: ['cảm giác trên da sử dụng', 'cảm giác trên da'],
+                type: 'pie'
+            },
+            {
+                match: ['cảm giác sau khi sử dụng', 'sau khi sử dụng'],
+                type: 'pie'
+            },
+            {
+                match: ['mức độ tiện lợi'],
+                type: 'pie'
+            },
+            {
+                match: ['sẵn sàng sử dụng sản phẩm rửa tay sát khuẩn từ thảo dược'],
+                type: 'pie',
+                labelMap: {
+                    'có': 'Có',
+                    'không': 'Không',
+                    'ko': 'Không'
+                }
+            },
+            {
+                match: ['phù hợp sử dụng ở đâu', 'sản phẩm phù hợp sử dụng ở đâu'],
+                type: 'bar'
+            }
+        ];
+
+        function getConfig(header) {
+            const lower = header.toLowerCase();
+            return specialConfigs.find(cfg => cfg.match.some(key => lower.includes(key)));
+        }
+
+        function mapLabel(label, labelMap) {
+            if (!labelMap) return label;
+            const lower = String(label).toLowerCase().trim();
+            return labelMap[lower] || label;
+        }
+
+        function getColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                colors.push(colorPalette[i % colorPalette.length]);
+            }
+            return colors;
+        }
 
         // Function để xử lý dữ liệu từ ArrayBuffer
         function processExcelData(arrayBuffer, fileDisplayName = 'data.xlsx') {
@@ -145,9 +244,14 @@
                 // Xử lý từng cột
                 headers.forEach((header, colIndex) => {
                     if (!header || header === '') return;
+
+                    const config = getConfig(header);
+                    if (config && config.skip) return;
                     
                     // Lấy dữ liệu của cột (bỏ qua dòng đầu tiên là header)
-                    const columnData = jsonData.slice(1).map(row => row[colIndex]).filter(val => val !== undefined && val !== null && val !== '');
+                    const columnData = jsonData.slice(1)
+                        .map(row => row[colIndex])
+                        .filter(val => val !== undefined && val !== null && val !== '');
                     
                     if (columnData.length === 0) return;
 
@@ -157,7 +261,7 @@
                     if (isNumeric) {
                         createNumericChart(header, columnData);
                     } else {
-                        createCategoryChart(header, columnData);
+                        createSpecialOrCategoryChart(header, columnData, config);
                     }
                 });
 
@@ -257,6 +361,7 @@
             
             const labels = Object.keys(counts);
             const values = Object.values(counts);
+            const colors = getColors(labels.length);
             
             const chartCard = document.createElement('div');
             chartCard.className = 'chart-card';
@@ -277,8 +382,8 @@
                     datasets: [{
                         label: 'Số lượng',
                         data: values,
-                        backgroundColor: labels.map(() => getRandomColor(0.7)),
-                        borderColor: labels.map(() => getRandomColor()),
+                        backgroundColor: colors.map(c => `${c}B3`),
+                        borderColor: colors,
                         borderWidth: 2
                     }]
                 },
@@ -296,6 +401,9 @@
                         }
                     },
                     scales: {
+                        x: {
+                            ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                        },
                         y: {
                             beginAtZero: true,
                             ticks: {
@@ -307,6 +415,69 @@
             });
             
             charts.push(chart);
+        }
+
+        function createPieChart(columnName, labels, values) {
+            const colors = getColors(labels.length);
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.innerHTML = `
+                <div class="chart-title">${columnName}</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart-${charts.length}"></canvas>
+                </div>
+            `;
+
+            chartsContainer.appendChild(chartCard);
+
+            const ctx = document.getElementById(`chart-${charts.length}`).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: ${context.formattedValue}`
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function createSpecialOrCategoryChart(columnName, data, config) {
+            const counts = {};
+            data.forEach(val => {
+                const mapped = mapLabel(val, config?.labelMap);
+                counts[mapped] = (counts[mapped] || 0) + 1;
+            });
+
+            const labels = Object.keys(counts);
+            const values = Object.values(counts);
+
+            if (config?.type === 'pie') {
+                createPieChart(columnName, labels, values);
+                return;
+            }
+
+            createCategoryChart(columnName, data.map(v => mapLabel(v, config?.labelMap)));
         }
 
         function getRandomColor(alpha = 1) {
